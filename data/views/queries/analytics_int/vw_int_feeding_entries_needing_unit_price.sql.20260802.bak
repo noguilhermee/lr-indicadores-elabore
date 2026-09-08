@@ -1,0 +1,35 @@
+/*
+VIEW: analytics_int.vw_int_feeding_entries_needing_unit_price
+
+Finalidade:
+Especialização que identifica apenas os lançamentos de vw_int_feeding_expense que possuem
+preço unitário zerado e os conecta com a produção de forrageira de origem (id_production)
+via movimentação de estoque.
+*/
+
+WITH producao AS (
+    SELECT s.id_stock_control_item,
+        s.source_reference_id AS id_production
+    FROM "StockControlMovement" s
+    WHERE s.source_module = 'PLANTED_CULTURE_PRODUCTION'::text
+      AND s.movement_type = 'ENTRY'::"StockControlMovementType"
+),
+consumo AS (
+    SELECT s.id_stock_control_item,
+        s.source_reference_id AS id_expense_entry
+    FROM "StockControlMovement" s
+    WHERE s.source_module = 'EXPENSES'::text
+      AND s.movement_type = 'EXIT'::"StockControlMovementType"
+)
+SELECT
+    fe.id_expense_entry,
+    fe.id_property,
+    fe.category_code,
+    fe.consumed_quantity_kg,
+    fe.current_unit_price,
+    fe.reference_month AS consumption_reference_month,
+    prod.id_production
+FROM consumo c
+JOIN producao prod ON c.id_stock_control_item = prod.id_stock_control_item
+JOIN analytics_int.vw_int_feeding_expense fe ON c.id_expense_entry = fe.id_expense_entry
+WHERE fe.current_unit_price = 0 OR fe.current_unit_price IS NULL;

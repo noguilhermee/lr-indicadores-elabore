@@ -1,0 +1,27 @@
+-- Definicao em producao antes do deploy de 05/08/2026
+CREATE OR REPLACE VIEW analytics_mart.vw_feeding_entries_needing_unit_price AS
+ SELECT int_f.id_expense_entry,
+    int_f.id_property,
+    int_f.category_code,
+    int_f.consumed_quantity_kg,
+    int_f.current_unit_price,
+    int_f.consumption_reference_month,
+    int_f.id_production,
+    p.id_planted_culture,
+    p.id_culture_harvest_product,
+    int_f.id_stock_control_item,
+    int_f.stock_origin,
+    int_f.stock_purchase_date,
+    int_f.stock_unit_value,
+    int_f.stock_unit_factor_kg,
+    int_f.stock_unit_price_kg,
+    int_f.stock_item_name,
+    int_f.stock_in_stock_quantity_kg,
+    int_f.stock_purchased_quantity_kg,
+    int_f.lot_id_production,
+    int_f.lot_id_planted_culture,
+    int_f.lot_id_area,
+    int_f.lot_id_culture,
+    int_f.lot_harvest_season
+   FROM analytics_int.vw_int_feeding_entries_needing_unit_price int_f
+     LEFT JOIN analytics_mart.vw_forage_production p ON int_f.id_production = p.id_production AND int_f.id_property = p.id_property;

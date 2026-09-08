@@ -1,0 +1,114 @@
+/*
+ATENÇÃO: Essa query tem por objetivo vincular os custos com fertilizantes
+aos ids que permitem identificar onde elas foram usadas.
+A saber: id_property, id_area, harvest_season
+NÃO ALTERAR SEM PRÉVIO CONSENTIMENTO.
+Ass: Filipe Dalboni
+
+VIEW: analytics_int.vw_fertilization_cost
+
+Finalidade:
+Camada intermediária do custo de fertilização no grão do item consumido, com a
+data de compra (entry_date) preservada para permitir deflacionar cada linha
+antes de somar.
+
+Granularidade:
+Uma linha por item consumido, ou por lote de origem quando o custo vem de baixa
+de estoque.
+
+Fontes principais:
+- public."CultureExpenseFertilization"
+- public."CultureExpenseFertilizationProduct"
+- public."CultureExpenseFertilizationStockConsumption"
+
+Regras de negócio relevantes:
+- is_active = true em todas as três tabelas: o app desativa e recria em vez de
+  fazer UPDATE, e sem o filtro cada edição vira duplicata.
+- Ramo 1 (baixa de estoque): o custo é o do lote consumido, e entry_date é o
+  applied_at do lote de origem, ou seja, a data em que o insumo foi comprado.
+- Ramo 2 (compra e uso no mesmo lançamento): entry_date = applied_at do próprio
+  item. Exclui ESTOCAR puro, que vira custo só quando consumido, e exclui itens
+  que já têm baixa de estoque associada, para não contar duas vezes.
+- O Ramo 2 lança o CONSUMIDO, não o comprado: custo = consumed_quantity *
+  unit_cost. Em ESTOCAR_CONSUMIR a compra costuma ser maior que o uso, e a sobra
+  fica em estoque até ser baixada — quando vira custo pelo Ramo 1. Projetar
+  line_total aqui contava o mesmo insumo duas vezes (defeito D7, 02/08/2026:
+  R$ 13,3 milhões, 2,2% do custo de fertilizante).
+- Unidades: unit_cost é o preço por unidade do lançamento, logo pareia com
+  consumed_quantity bruta; unit_cost_kg pareia com consumed_quantity_kg. Não
+  entra fator de conversão no meio.
+- A view não agrega de propósito: agregar aqui destruiria a possibilidade de
+  deflacionar por data no Python.
+
+Forma de consulta:
+SELECT * FROM analytics_int.vw_fertilization_cost;
+*/
+
+CREATE OR REPLACE VIEW analytics_int.vw_fertilization_cost AS
+
+-- Ramo 1: custo vindo de baixa de estoque (ESTOCAR -> CONSUMIR)
+SELECT
+    'fertilizante'::text              AS tipo_custo,
+    p.id_fertilization_product        AS id_product,
+    sc.id_fertilization_product_stock AS id_lote_origem,
+    f.id_fertilization                AS id_parent,
+    f.id_property,
+    f.id_area,
+    f.id_culture,
+    f.harvest_season,
+    p.operation::text                 AS operation,
+    p.stage::text                     AS stage,
+    p.product_name,
+    p.unit,
+    sc.quantity,
+    sc.unit_cost,
+    sc.quantity_kg,
+    sc.unit_cost_kg,
+    sc.line_total                     AS custo,
+    origem.applied_at                 AS entry_date,
+    p.applied_at
+FROM "CultureExpenseFertilizationStockConsumption" sc
+JOIN "CultureExpenseFertilizationProduct" p
+    ON p.id_fertilization_product = sc.id_fertilization_product_consumer
+   AND p.is_active = true
+JOIN "CultureExpenseFertilizationProduct" origem
+    ON origem.id_fertilization_product = sc.id_fertilization_product_stock
+JOIN "CultureExpenseFertilization" f
+    ON f.id_fertilization = p.id_fertilization
+   AND f.is_active = true
+WHERE sc.is_active = true
+
+UNION ALL
+
+-- Ramo 2: compra e uso no mesmo lançamento (exclui ESTOCAR puro)
+SELECT
+    'fertilizante'::text,
+    p.id_fertilization_product,
+    NULL::text,
+    f.id_fertilization,
+    f.id_property,
+    f.id_area,
+    f.id_culture,
+    f.harvest_season,
+    p.operation::text,
+    p.stage::text,
+    p.product_name,
+    p.unit,
+    COALESCE(p.consumed_quantity, p.quantity),
+    p.unit_cost,
+    COALESCE(p.consumed_quantity_kg, p.quantity_kg),
+    p.unit_cost_kg,
+    COALESCE(p.consumed_quantity, p.quantity) * p.unit_cost,
+    p.applied_at,
+    p.applied_at
+FROM "CultureExpenseFertilizationProduct" p
+JOIN "CultureExpenseFertilization" f
+    ON f.id_fertilization = p.id_fertilization
+   AND f.is_active = true
+WHERE p.is_active = true
+  AND p.operation::text IS DISTINCT FROM 'ESTOCAR'
+  AND NOT EXISTS (
+      SELECT 1 FROM "CultureExpenseFertilizationStockConsumption" sc
+      WHERE sc.id_fertilization_product_consumer = p.id_fertilization_product
+        AND sc.is_active = true
+  );

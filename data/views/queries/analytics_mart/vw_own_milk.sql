@@ -25,7 +25,7 @@ SELECT * FROM analytics_mart.vw_own_milk;
 
 SELECT eb.id_property,
     eb.reference_month,
-    max(eb.unit_price) AS unit_price,
+    rev.weighted_avg_price AS unit_price,
     sum(
         CASE
             WHEN eb.line_code = 'hired-labor'::text THEN COALESCE(eb.quantity, 0::double precision)
@@ -66,8 +66,20 @@ SELECT eb.id_property,
             WHEN eb.line_code = 'family-labor'::text THEN COALESCE(eb.amount_total, 0::double precision)
             ELSE 0::double precision
         END) AS family_labor_amount_total
-    
-    FROM analytics_int.vw_int_expense eb
-    WHERE eb.tab = 'OWN_MILK'::"ExpenseTab"
-    GROUP BY eb.id_property, eb.reference_month
-    ORDER BY eb.id_property, eb.reference_month;
+   FROM analytics_int.vw_int_expense eb
+   LEFT JOIN (
+       SELECT id_property,
+           reference_month,
+           sum(amount_total) / NULLIF(sum(payload_quantity), 0) AS weighted_avg_price
+       FROM analytics_int.vw_int_revenue
+       WHERE type = 'MILK_SOLD'
+         AND amount_total IS NOT NULL
+         AND payload_quantity IS NOT NULL
+         AND payload_quantity > 0
+       GROUP BY id_property, reference_month
+   ) rev
+     ON rev.id_property = eb.id_property
+    AND rev.reference_month = eb.reference_month
+  WHERE eb.tab = 'OWN_MILK'::"ExpenseTab"
+  GROUP BY eb.id_property, eb.reference_month, rev.weighted_avg_price
+  ORDER BY eb.id_property, eb.reference_month;

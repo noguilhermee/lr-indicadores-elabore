@@ -1,0 +1,12 @@
+0.00s - Debugger warning: It seems that frozen modules are being used, which may
+0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off
+0.00s - to python to disable frozen modules.
+0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.
+C:\Users\analy\anaconda3\Lib\site-packages\zmq\_future.py:693: RuntimeWarning: Proactor event loop does not implement add_reader family of methods required for zmq. Registering an additional selector thread for add_reader support via tornado. Use `asyncio.set_event_loop_policy(WindowsSelectorEventLoopPolicy())` to avoid this warning.
+  self._get_loop()
+0.00s - Debugger warning: It seems that frozen modules are being used, which may
+0.00s - make the debugger miss breakpoints. Please pass -Xfrozen_modules=off
+0.00s - to python to disable frozen modules.
+0.00s - Note: Debugging will proceed. Set PYDEVD_DISABLE_FILE_VALIDATION=1 to disable this validation.
+Notebook original: 88 celulas. Executando 86 (cortadas as 2 ultimas: markdown + codigo de ingestao no Supabase).
+Duracao: 8.0 min. Saida gravada em: C:\Users\analy\LABOR RURAL\Analytics - Departamento Analytics\TEMP\GUILHERME\SCRIPTS\projetcs\elabore-views\.scratch\variacao-50-periodo\notebook_validacao_executado.ipynb

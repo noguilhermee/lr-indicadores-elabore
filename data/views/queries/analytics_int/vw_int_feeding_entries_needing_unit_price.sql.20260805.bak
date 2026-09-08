@@ -1,0 +1,40 @@
+-- Definicao em producao antes do deploy de 05/08/2026
+CREATE OR REPLACE VIEW analytics_int.vw_int_feeding_entries_needing_unit_price AS
+ WITH producao AS (
+         SELECT DISTINCT s.id_stock_control_item,
+            s.source_reference_id AS id_production
+           FROM "StockControlMovement" s
+          WHERE s.source_module = 'PLANTED_CULTURE_PRODUCTION'::text AND s.movement_type = 'ENTRY'::"StockControlMovementType"
+        ), consumo AS (
+         SELECT DISTINCT s.id_stock_control_item,
+            s.source_reference_id AS id_expense_entry
+           FROM "StockControlMovement" s
+          WHERE s.source_module = 'EXPENSES'::text AND s.movement_type = 'EXIT'::"StockControlMovementType"
+        )
+ SELECT fe.id_expense_entry,
+    fe.id_property,
+    fe.category_code,
+    fe.consumed_quantity_kg,
+    fe.current_unit_price,
+    fe.reference_month AS consumption_reference_month,
+    prod.id_production,
+    c.id_stock_control_item,
+    sci.origin::text AS stock_origin,
+    sci.purchase_date AS stock_purchase_date,
+    sci.unit_value AS stock_unit_value,
+    sci.unit_factor_kg AS stock_unit_factor_kg,
+    sci.unit_value / NULLIF(sci.unit_factor_kg, 0::double precision) AS stock_unit_price_kg,
+    sci.item_name AS stock_item_name,
+    lot.in_stock_quantity_kg AS stock_in_stock_quantity_kg,
+    lot.purchased_quantity_kg AS stock_purchased_quantity_kg,
+    lot.id_production AS lot_id_production,
+    lot.id_planted_culture AS lot_id_planted_culture,
+    lot.id_area AS lot_id_area,
+    lot.id_culture AS lot_id_culture,
+    lot.harvest_season AS lot_harvest_season
+   FROM consumo c
+     LEFT JOIN producao prod ON c.id_stock_control_item = prod.id_stock_control_item
+     LEFT JOIN "StockControlItem" sci ON sci.id_stock_control_item = c.id_stock_control_item
+     LEFT JOIN analytics_int.vw_int_stock_lot_origin lot ON lot.id_stock_control_item = c.id_stock_control_item
+     JOIN analytics_int.vw_int_feeding_expense fe ON c.id_expense_entry = fe.id_expense_entry
+  WHERE fe.current_unit_price = 0::double precision OR fe.current_unit_price IS NULL;

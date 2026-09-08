@@ -1,0 +1,10 @@
+﻿indicador,grupo,linhas_marcadas,taxa_%,ref_13_08_%,delta_pp,dentro_do_corte_10%
+Total de Vacas (cabeças),estrutural,25,0.19,0.2,-0.01,True
+Preço Unitário do Leite (R$/litro),estrutural,32,0.24,0.3,-0.06,True
+Área Total da Propriedade (ha),estrutural,84,0.63,0.8,-0.17,True
+Produção Total de Leite (litros),estrutural,189,1.42,1.6,-0.18,True
+Estoque de Capital Total (R$),estrutural,205,1.54,0.6,0.94,True
+Custo Total Mão de Obra (R$),custo agregado,514,3.86,,,True
+Custo Total com Alimentação (R$),custo agregado,1126,8.46,,,True
+Custo de Concentrado e Mineral (R$),custo agregado,1349,10.14,,,False
+Outras Despesas Operacionais (R$),custo agregado,3390,25.48,,,False
